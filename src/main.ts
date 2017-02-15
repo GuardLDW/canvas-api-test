@@ -19,10 +19,11 @@ window.onload = () => {
 
     //文字
     var word1 = new TextField();
-    word1.x = 20;
+    word1.x = 10;
     word1.y = 20;
     word1.text = "欧尼酱";
     word1.color = "#FF0000"
+    word1.size = 20;
     
     //图片
     var image = document.createElement("img");
@@ -32,6 +33,8 @@ window.onload = () => {
 
         var avater = new Bitmap();
         avater.image = image;
+        avater.width = 400;
+        avater.height = 400;
         stage.addChild(avater);
         stage.addChild(word1);
     }
@@ -57,9 +60,14 @@ class Bitmap extends DisplayObject implements Drawable{
     
     image: HTMLImageElement;
 
+    width : number = 0;
+
+    height : number = 0;
+
     draw(context2D: CanvasRenderingContext2D) {
         
-        context2D.drawImage(this.image, this.x, this.y);
+        context2D.setTransform(1, 0, 0, 1, this.x, this.y);
+        context2D.drawImage(this.image, 0, 0, this.width, this.height);
     }
 }
 
@@ -74,8 +82,10 @@ class TextField extends DisplayObject implements Drawable{
 
     draw(context2D: CanvasRenderingContext2D) {
         
+        context2D.setTransform(1, 0, 0, 1, this.x, this.y);
+        context2D.font = "normal lighter " + this.size + "px"  + " cursive";
         context2D.fillStyle = this.color;
-        context2D.fillText(this.text, this.x, this.y);
+        context2D.fillText(this.text, 0, 0);
     }
 
 }

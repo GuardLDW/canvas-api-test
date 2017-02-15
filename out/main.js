@@ -16,16 +16,19 @@ window.onload = function () {
     */
     //文字
     var word1 = new TextField();
-    word1.x = 20;
+    word1.x = 10;
     word1.y = 20;
     word1.text = "欧尼酱";
     word1.color = "#FF0000";
+    word1.size = 20;
     //图片
     var image = document.createElement("img");
     image.src = "avater.jpg";
     image.onload = function () {
         var avater = new Bitmap();
         avater.image = image;
+        avater.width = 400;
+        avater.height = 400;
         stage.addChild(avater);
         stage.addChild(word1);
     };
@@ -43,9 +46,12 @@ var Bitmap = (function (_super) {
     __extends(Bitmap, _super);
     function Bitmap() {
         _super.apply(this, arguments);
+        this.width = 0;
+        this.height = 0;
     }
     Bitmap.prototype.draw = function (context2D) {
-        context2D.drawImage(this.image, this.x, this.y);
+        context2D.setTransform(1, 0, 0, 1, this.x, this.y);
+        context2D.drawImage(this.image, 0, 0, this.width, this.height);
     };
     return Bitmap;
 }(DisplayObject));
@@ -58,8 +64,10 @@ var TextField = (function (_super) {
         this.size = 0;
     }
     TextField.prototype.draw = function (context2D) {
+        context2D.setTransform(1, 0, 0, 1, this.x, this.y);
+        context2D.font = "normal lighter " + this.size + "px" + " cursive";
         context2D.fillStyle = this.color;
-        context2D.fillText(this.text, this.x, this.y);
+        context2D.fillText(this.text, 0, 0);
     };
     return TextField;
 }(DisplayObject));
