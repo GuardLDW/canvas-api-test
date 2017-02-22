@@ -6,6 +6,27 @@ window.onload = () => {
     //4.对渲染上下文设置显示对象的全局矩阵
 
     var canvas = document.getElementById("app") as HTMLCanvasElement;//使用 id 来寻找 canvas 元素
+    canvas.onmousedown = (e) =>{
+
+        console.log(e);
+        var x = e.offsetX;
+        var y = e.offsetY;
+
+        var result = stage.hitTest(x, y);
+        var target = result;
+        if(result){
+
+            while(result.parent){
+
+                var type = "mousedown";
+                var currentTaget = result.parent;
+                let e = {type, target, currentTaget};
+                result = result.parent;
+
+            }
+        }
+    }
+
     var context2D = canvas.getContext("2d");//得到内建的 HTML5 对象，拥有多种绘制路径、矩形、圆形、字符以及添加图像的方法
 
 
@@ -18,11 +39,13 @@ window.onload = () => {
     panel.alpha = 0.5;
     
     setInterval(() => {
-        
+
         context2D.clearRect(0, 0, canvas.width, canvas.height);//在显示图片之前先清屏，将之前帧的图片去掉,清屏范围最好设置成画布的宽与高
-        stage.draw(context2D);
+        stage.draw(context2D);//最外层开始画
 
     }, 100)
+
+
 
     /*
     //模拟TextField与Bitmap
@@ -36,7 +59,6 @@ window.onload = () => {
     word1.text = "欧尼酱";
     word1.color = "#FF0000"
     word1.size = 20;
-    word1.alpha = 0.8;
 
     var word2 = new TextField();
     word2.text = "第二层容器"
@@ -49,10 +71,6 @@ window.onload = () => {
 
     //加载完图片资源
     avater.image.onload = () => {
-
-        avater.width = 400;
-        avater.height = 400;
-        //avater.rotation = 25;
 
         panel.addChild(word2);
 
@@ -76,7 +94,7 @@ interface Drawable{
 }
 
 
-class DisplayObject implements Drawable{
+abstract class DisplayObject implements Drawable{
 
     x : number = 0;
     y : number = 0;
@@ -90,6 +108,8 @@ class DisplayObject implements Drawable{
     alpha : number = 1;//相对
     globalAlpha : number = 1;//全局                             
     parent : DisplayObject = null;
+
+    touchEnable : boolean = false;
 
     constructor(){
 
@@ -131,10 +151,11 @@ class DisplayObject implements Drawable{
     }
 
     //在子类中重写
-    render(context2D: CanvasRenderingContext2D){
+    abstract render(context2D: CanvasRenderingContext2D);
+
+    abstract hitTest(x : number, y : number) : DisplayObject;//返回值确定被点击的控件
 
 
-    }
 
 }
 
@@ -143,20 +164,36 @@ class Bitmap extends DisplayObject{
     
     image: HTMLImageElement;
 
-    width : number = 0;
-
-    height : number = 0;
-
     constructor() {
         
         super();
         this.image = document.createElement("img");
+ 
     }
 
     render(context2D: CanvasRenderingContext2D) {
-        
-        context2D.drawImage(this.image, 0, 0, this.width, this.height);
+
+        context2D.drawImage(this.image, 0, 0, this.image.width, this.image.height);
         //context2D.drawImage(this.image, 0, 0);
+    }
+
+    hitTest(x : number, y : number){
+
+        var rect = new math.Rectangle();
+        rect.x = 0;
+        rect.y = 0;
+        rect.width = this.image.width;
+        rect.height = this.image.height;
+        if(rect.isPointInRectangle(new math.Point(x, y))){
+
+            alert("touch img");
+            return this;
+
+        }else{
+
+            return null;
+        }
+    
     }
 }
 
@@ -174,51 +211,108 @@ class TextField extends DisplayObject{
         context2D.font = "normal lighter " + this.size + "px"  + " cursive";
         context2D.fillStyle = this.color;
         context2D.fillText(this.text, 0, 0);
+
     }
 
+    hitTest(x : number, y : number){
+
+        var rect = new math.Rectangle();
+        rect.x = 0;
+        rect.y = -this.size;//????????
+        rect.width = this.size * this.text.length;
+        rect.height = this.size;
+
+        if(rect.isPointInRectangle(new math.Point(x, y))){
+
+            alert("touch text");
+            return this;
+
+        }else{
+
+            return null;
+        }
+        
+    }
+
+}
+
+class Button{
+
+    addEventListener(type : string, listener : Function){
+
+
+    }
+    
+    //var button; button.addEventListener("click", ()=>{
+
+
+    //})
 }
 
 
 
 class DisplayObjectContainer extends DisplayObject{
     
-    array: DisplayObject[] = [];
+    children : DisplayObject[] = [];
 
     render(context2D : CanvasRenderingContext2D){
 
-        for (let displayObject of this.array) {
+        for (let displayObject of this.children) {
 
             displayObject.draw(context2D);
         }
     }
 
-    addChild(displayObject : DisplayObject){
+    addChild(child : DisplayObject){
 
-        this.array.push(displayObject);
-        displayObject.parent = this;
+        this.children.push(child);
+        child.parent = this;
 
     }
 
     removeChild(displayObject : DisplayObject){
 
-        var tempArray = this.array.concat();
+        var tempArray = this.children.concat();
         for(let each of tempArray){
 
             if(each == displayObject){
 
-                var index = this.array.indexOf(each);
+                var index = this.children.indexOf(each);
                 tempArray.splice(index, 1);
-                this.array = tempArray;
+                this.children = tempArray;
                 return;
             }
         }
     }
 
+    hitTest(x : number, y : number){
+
+        for(var i = this.children.length - 1; i >= 0; i--){
+
+            var child = this.children[i];
+            var pointBaseOnChild = math.pointAppendMatrix(new math.Point(x, y), math.invertMatrix(child.matrix));//通过与逆矩阵相乘得出点的相对坐标---点向量
+            var hitTestResult = child.hitTest(pointBaseOnChild.x, pointBaseOnChild.y);//树的遍历
+            console.log(hitTestResult);
+            
+            if(hitTestResult){
+                                
+                return hitTestResult;
+            }
+        }
+
+        return null;
+    }
+
+    
+
 
 }
 
 
-
+//捕获---冒泡机制
+//scene
+//player
+//glasses
 
 
 

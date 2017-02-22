@@ -10,7 +10,31 @@ module math {
         }
     }
 
+    export class Rectangle{
+
+        x : number = 0;
+        y : number = 0;
+        width : number = 1;
+        height : number = 1;
+
+        isPointInRectangle(point : Point){
+
+            var rect = this;
+
+            if(point.x < rect.x + rect.width && point.x > rect.x && point.y < rect.height + rect.y && point.y > rect.y){
+
+                return true;
+
+            }else{
+
+                return false;
+            }
+        }
+    }
+
+
     export function pointAppendMatrix(point: Point, m: Matrix): Point {
+        
         var x = m.a * point.x + m.c * point.y + m.tx;
         var y = m.b * point.x + m.d * point.y + m.ty;
         return new Point(x, y);

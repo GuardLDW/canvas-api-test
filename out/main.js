@@ -9,6 +9,21 @@ window.onload = function () {
     //3.把显示对象的相对矩阵与父对象的全局矩阵相乘，得到显示对象的全局矩阵
     //4.对渲染上下文设置显示对象的全局矩阵
     var canvas = document.getElementById("app"); //使用 id 来寻找 canvas 元素
+    canvas.onmousedown = function (e) {
+        console.log(e);
+        var x = e.offsetX;
+        var y = e.offsetY;
+        var result = stage.hitTest(x, y);
+        var target = result;
+        if (result) {
+            while (result.parent) {
+                var type = "mousedown";
+                var currentTaget = result.parent;
+                var e_1 = { type: type, target: target, currentTaget: currentTaget };
+                result = result.parent;
+            }
+        }
+    };
     var context2D = canvas.getContext("2d"); //得到内建的 HTML5 对象，拥有多种绘制路径、矩形、圆形、字符以及添加图像的方法
     var stage = new DisplayObjectContainer();
     //第二层容器
@@ -18,7 +33,7 @@ window.onload = function () {
     panel.alpha = 0.5;
     setInterval(function () {
         context2D.clearRect(0, 0, canvas.width, canvas.height); //在显示图片之前先清屏，将之前帧的图片去掉,清屏范围最好设置成画布的宽与高
-        stage.draw(context2D);
+        stage.draw(context2D); //最外层开始画
     }, 100);
     /*
     //模拟TextField与Bitmap
@@ -30,7 +45,6 @@ window.onload = function () {
     word1.text = "欧尼酱";
     word1.color = "#FF0000";
     word1.size = 20;
-    word1.alpha = 0.8;
     var word2 = new TextField();
     word2.text = "第二层容器";
     word2.color = "#0000FF";
@@ -40,9 +54,6 @@ window.onload = function () {
     avater.image.src = "avater.jpg";
     //加载完图片资源
     avater.image.onload = function () {
-        avater.width = 400;
-        avater.height = 400;
-        //avater.rotation = 25;
         panel.addChild(word2);
         stage.addChild(avater);
         stage.addChild(word1);
@@ -62,6 +73,7 @@ var DisplayObject = (function () {
         this.alpha = 1; //相对
         this.globalAlpha = 1; //全局                             
         this.parent = null;
+        this.touchEnable = false;
         this.matrix = new math.Matrix();
         this.globalMatrix = new math.Matrix();
     }
@@ -85,22 +97,31 @@ var DisplayObject = (function () {
         this.render(context2D);
         //模板方法模式
     };
-    //在子类中重写
-    DisplayObject.prototype.render = function (context2D) {
-    };
     return DisplayObject;
 }());
 var Bitmap = (function (_super) {
     __extends(Bitmap, _super);
     function Bitmap() {
         _super.call(this);
-        this.width = 0;
-        this.height = 0;
         this.image = document.createElement("img");
     }
     Bitmap.prototype.render = function (context2D) {
-        context2D.drawImage(this.image, 0, 0, this.width, this.height);
+        context2D.drawImage(this.image, 0, 0, this.image.width, this.image.height);
         //context2D.drawImage(this.image, 0, 0);
+    };
+    Bitmap.prototype.hitTest = function (x, y) {
+        var rect = new math.Rectangle();
+        rect.x = 0;
+        rect.y = 0;
+        rect.width = this.image.width;
+        rect.height = this.image.height;
+        if (rect.isPointInRectangle(new math.Point(x, y))) {
+            alert("touch img");
+            return this;
+        }
+        else {
+            return null;
+        }
     };
     return Bitmap;
 }(DisplayObject));
@@ -117,36 +138,73 @@ var TextField = (function (_super) {
         context2D.fillStyle = this.color;
         context2D.fillText(this.text, 0, 0);
     };
+    TextField.prototype.hitTest = function (x, y) {
+        var rect = new math.Rectangle();
+        rect.x = 0;
+        rect.y = -this.size; //????????
+        rect.width = this.size * this.text.length;
+        rect.height = this.size;
+        if (rect.isPointInRectangle(new math.Point(x, y))) {
+            alert("touch text");
+            return this;
+        }
+        else {
+            return null;
+        }
+    };
     return TextField;
 }(DisplayObject));
+var Button = (function () {
+    function Button() {
+    }
+    Button.prototype.addEventListener = function (type, listener) {
+    };
+    return Button;
+}());
 var DisplayObjectContainer = (function (_super) {
     __extends(DisplayObjectContainer, _super);
     function DisplayObjectContainer() {
         _super.apply(this, arguments);
-        this.array = [];
+        this.children = [];
     }
     DisplayObjectContainer.prototype.render = function (context2D) {
-        for (var _i = 0, _a = this.array; _i < _a.length; _i++) {
+        for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
             var displayObject = _a[_i];
             displayObject.draw(context2D);
         }
     };
-    DisplayObjectContainer.prototype.addChild = function (displayObject) {
-        this.array.push(displayObject);
-        displayObject.parent = this;
+    DisplayObjectContainer.prototype.addChild = function (child) {
+        this.children.push(child);
+        child.parent = this;
     };
     DisplayObjectContainer.prototype.removeChild = function (displayObject) {
-        var tempArray = this.array.concat();
+        var tempArray = this.children.concat();
         for (var _i = 0, tempArray_1 = tempArray; _i < tempArray_1.length; _i++) {
             var each = tempArray_1[_i];
             if (each == displayObject) {
-                var index = this.array.indexOf(each);
+                var index = this.children.indexOf(each);
                 tempArray.splice(index, 1);
-                this.array = tempArray;
+                this.children = tempArray;
                 return;
             }
         }
     };
+    DisplayObjectContainer.prototype.hitTest = function (x, y) {
+        for (var i = this.children.length - 1; i >= 0; i--) {
+            var child = this.children[i];
+            var pointBaseOnChild = math.pointAppendMatrix(new math.Point(x, y), math.invertMatrix(child.matrix)); //通过与逆矩阵相乘得出点的相对坐标---点向量
+            var hitTestResult = child.hitTest(pointBaseOnChild.x, pointBaseOnChild.y); //树的遍历
+            console.log(hitTestResult);
+            if (hitTestResult) {
+                return hitTestResult;
+            }
+        }
+        return null;
+    };
     return DisplayObjectContainer;
 }(DisplayObject));
+//捕获---冒泡机制
+//scene
+//player
+//glasses
 //# sourceMappingURL=main.js.map
